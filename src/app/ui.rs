@@ -42,32 +42,12 @@ impl AthenianApp {
 
                     ui.label("Инструменты:");
 
-                    if ui.button("Add Vertex").clicked() {
-                        self.instrument = crate::app::logic::Instrument::AddVertex;
+                    if ui.button("Выполнить 1 шаг").clicked() {
+                        self.do_triangulation_step();
                     }
 
-                    if ui.button("Select Polygon").clicked() {
-                        self.instrument = crate::app::logic::Instrument::Select;
-                    }
-
-                    if ui.button("Set Anchor").clicked() {
-                        self.instrument = crate::app::logic::Instrument::SetAnchor;
-                    }
-
-                    if ui.button("Set Point").clicked() {
-                        self.instrument = crate::app::logic::Instrument::SetPoint;
-                    }
-
-                    if ui.button("Drag Polygon").clicked() {
-                        self.instrument = crate::app::logic::Instrument::Drag;
-                    }
-
-                    if ui.button("Rotate Polygon").clicked() {
-                        self.instrument = crate::app::logic::Instrument::Rotate;
-                    }
-
-                    if ui.button("Scale Polygon").clicked() {
-                        self.instrument = crate::app::logic::Instrument::Scale;
+                    if ui.button("Завершить полностью").clicked() {
+                        self.do_full_triangulation();
                     }
                 });
             });
@@ -77,7 +57,7 @@ impl AthenianApp {
     fn show_bottom_panel(&self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(format!("инструмент: {}", self.instrument.to_string()));
+                ui.label(format!("триангуляция завершена?: {}", self.state.is_triangulation_completed().to_string()));
 
                 ui.separator();
 

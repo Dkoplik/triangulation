@@ -165,41 +165,6 @@ impl Polygon {
             y: y / (self.vertexes.len() as f32),
         }
     }
-
-    /// Проверка пересечения двух отрезков ab и cd
-    fn segments_intersect(a: Pos2, b: Pos2, c: Pos2, d: Pos2) -> Option<Pos2> {
-        let ab_dir = Pos2::new(b.x - a.x, b.y - a.y);
-        let cd_dir = Pos2::new(d.x - c.x, d.y - c.y);
-
-        let n = Pos2::new(-cd_dir.y, cd_dir.x);
-
-        let denominator = n.x * ab_dir.x + n.y * ab_dir.y;
-
-        if denominator.abs() < 1e-12 {
-            return None;
-        }
-
-        let ac = Pos2::new(a.x - c.x, a.y - c.y);
-        let numerator = -(n.x * ac.x + n.y * ac.y);
-        let t = numerator / denominator;
-
-        if !(0.0..=1.0).contains(&t) {
-            return None;
-        }
-
-        let intersection = Pos2::new(a.x + t * ab_dir.x, a.y + t * ab_dir.y);
-
-        let cd_to_intersection = Pos2::new(intersection.x - c.x, intersection.y - c.y);
-        let dot_product = cd_dir.x * cd_to_intersection.x + cd_dir.y * cd_to_intersection.y;
-        let cd_length_squared = cd_dir.x * cd_dir.x + cd_dir.y * cd_dir.y;
-
-        let s = dot_product / cd_length_squared;
-        if !(0.0..=1.0).contains(&s) {
-            return None;
-        }
-
-        Some(intersection)
-    }
 }
 
 // --------------------------------------------------
@@ -234,29 +199,29 @@ impl Polygon {
 /// Настройка рисования полигона
 pub struct PolygonStyle {
     /// Цвет вершины полигона
-    vertex_color: egui::Color32,
+    pub vertex_color: egui::Color32,
     /// Радиус вершины полигона
-    vertex_radius: f32,
+    pub vertex_radius: f32,
 
     /// Цвет пересечения полигона
-    intersection_color: egui::Color32,
+    pub intersection_color: egui::Color32,
     /// Радиус пересечения полигона
-    intersection_radius: f32,
+    pub intersection_radius: f32,
 
     /// Цвет ребра полигона
-    edge_color: egui::Color32,
+    pub edge_color: egui::Color32,
     /// Толщина ребра полигона
-    edge_width: f32,
+    pub edge_width: f32,
 
     /// Цвет стрелки
-    arrow_color: egui::Color32,
+    pub arrow_color: egui::Color32,
     /// Ширина стрелки
-    arrow_width: f32,
+    pub arrow_width: f32,
 }
 
 impl PolygonStyle {
     /// Стандартный стиль полигона
-    pub fn standard() -> Self {
+    pub fn dead() -> Self {
         PolygonStyle {
             vertex_color: egui::Color32::BLACK,
             vertex_radius: 7.0,
@@ -270,7 +235,7 @@ impl PolygonStyle {
     }
 
     /// Стиль выбранного полигона
-    pub fn selected() -> Self {
+    pub fn alive() -> Self {
         PolygonStyle {
             vertex_color: egui::Color32::LIGHT_BLUE,
             vertex_radius: 10.0,
