@@ -9,7 +9,6 @@ use egui::Pos2;
 pub struct Polygon {
     /// Точки полигона. Рёбра идут в направлении от ранних точек к поздним.
     vertexes: Vec<Pos2>,
-    intersections: Vec<Pos2>,
 }
 
 // --------------------------------------------------
@@ -20,7 +19,6 @@ impl Polygon {
     pub fn new(x: f32, y: f32) -> Self {
         Self {
             vertexes: vec![Pos2::new(x, y)],
-            intersections: vec![],
         }
     }
 
@@ -47,7 +45,6 @@ impl Polygon {
     /// Добавить вершину (точку) в полигон.
     pub fn add_vertex(&mut self, x: f32, y: f32) {
         self.vertexes.push(Pos2::new(x, y));
-        self.update_intersections();
     }
 
     /// Добавить вершину (точку) в полигон.
@@ -169,20 +166,6 @@ impl Polygon {
         }
     }
 
-    /// Проверяет, находится ли точка point слева от отрезка [start, end]
-    fn is_point_left(point: Pos2, start: Pos2, end: Pos2) -> bool {
-        let segment_vector = end - start;
-        let point_vector = point - start;
-
-        // векторное произведение
-        let cross_product = segment_vector.x * point_vector.y - segment_vector.y * point_vector.x;
-        cross_product > 0.0
-    }
-
-    fn is_point_right(point: Pos2, start: Pos2, end: Pos2) -> bool {
-        !Self::is_point_left(point, start, end)
-    }
-
     /// Проверка пересечения двух отрезков ab и cd
     fn segments_intersect(a: Pos2, b: Pos2, c: Pos2, d: Pos2) -> Option<Pos2> {
         let ab_dir = Pos2::new(b.x - a.x, b.y - a.y);
@@ -217,38 +200,6 @@ impl Polygon {
 
         Some(intersection)
     }
-
-    /// Обновление списка пересечений при добавлении новой вершины
-    fn update_intersections(&mut self) {
-        self.intersections.clear();
-
-        let n = self.vertexes.len();
-        if n < 4 {
-            return;
-        }
-
-        for i in 0..n {
-            let a = self.vertexes[i];
-            let b = self.vertexes[(i + 1) % n];
-
-            for j in (i + 2)..n {
-                if (j + 1) % n == i {
-                    continue;
-                }
-
-                let c = self.vertexes[j];
-                let d = self.vertexes[(j + 1) % n];
-
-                if let Some(intersection) = Self::segments_intersect(a, b, c, d)
-                    && !self.intersections.iter().any(|&p| {
-                        (p.x - intersection.x).abs() < 1e-6 && (p.y - intersection.y).abs() < 1e-6
-                    })
-                {
-                    self.intersections.push(intersection);
-                }
-            }
-        }
-    }
 }
 
 // --------------------------------------------------
@@ -274,7 +225,7 @@ impl Polygon {
     }
 
     /// Нарисовать полигон на холсте.
-    pub fn draw(&self, painter: &egui::Painter, style: &PolygonStyle, point: Option<Pos2>) {
+    pub fn draw(&self, painter: &egui::Painter, style: &PolygonStyle) {
         self.draw_vertexes(painter, style);
         self.draw_edges(painter, style);
     }
