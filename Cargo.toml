@@ -1,0 +1,10 @@
+[package]
+name = "athenian-transformations"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.32.3"
+egui = "0.32.3"
+image = "0.25.8"
+rfd = "0.15.4"
