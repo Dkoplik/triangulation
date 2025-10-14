@@ -9,17 +9,27 @@ pub struct TriangulationState {
     /// Набор точек (вершин) для построение полигона.
     pub points: Vec<Pos2>,
     /// Полученные полигоны.
-    pub triangles: Vec<Polygon>,
+    pub triangles: HashSet<Polygon>,
     /// "Живые" рёбра.
     pub alive_edges: HashSet<Edge>,
     /// "Мёртвые" рёбра.
     pub dead_edges: HashSet<Edge>,
+    pub circle: Option<(Pos2, f32)>,
 }
 
 impl TriangulationState {
     fn draw_triangles(&self, painter: &egui::Painter, style: &PolygonStyle) {
         self.triangles.iter().for_each(|triangle| {
-            triangle.draw(painter, style);
+            let points = vec![
+                self.points[triangle.a],
+                self.points[triangle.b],
+                self.points[triangle.c],
+                self.points[triangle.a],
+            ];
+            painter.line(
+                points,
+                egui::epaint::PathStroke::new(style.edge_width, style.edge_color),
+            );
         });
     }
 
@@ -31,11 +41,23 @@ impl TriangulationState {
 
     fn draw_alive_edges(&self, painter: &egui::Painter, style: &PolygonStyle) {
         self.alive_edges.iter().for_each(|edge| {
-            painter.line_segment(
-                [self.points[edge.0], self.points[edge.1]],
+            let edge_vec = self.points[edge.1] - self.points[edge.0];
+            painter.arrow(
+                self.points[edge.0],
+                edge_vec,
                 egui::epaint::Stroke::new(style.edge_width, style.edge_color),
             );
         });
+    }
+
+    fn draw_circle(&self, painter: &egui::Painter, style: &PolygonStyle) {
+        if let Some(circle) = self.circle {
+            painter.circle_stroke(
+                circle.0,
+                circle.1,
+                egui::epaint::Stroke::new(style.edge_width, style.edge_color),
+            );
+        }
     }
 
     fn draw_dead_edges(&self, painter: &egui::Painter, style: &PolygonStyle) {
@@ -52,6 +74,7 @@ impl TriangulationState {
         self.draw_points(painter, &PolygonStyle::dead());
         self.draw_dead_edges(painter, &PolygonStyle::dead());
         self.draw_alive_edges(painter, &PolygonStyle::alive());
+        self.draw_circle(painter, &PolygonStyle::alive());
     }
 
     pub fn is_triangulation_initialized(&self) -> bool {
@@ -68,7 +91,11 @@ pub struct Edge(usize, usize);
 
 impl Edge {
     fn new(a: usize, b: usize) -> Self {
-        if a < b { Edge(a, b) } else { Edge(b, a) }
+        Edge(a, b)
+    }
+
+    fn reversed(&self) -> Self {
+        Edge::new(self.1, self.0)
     }
 }
 
@@ -78,7 +105,7 @@ pub fn init_triangulation(state: &mut TriangulationState) {
         return;
     }
 
-    state.triangles = Vec::new();
+    state.triangles = HashSet::new();
     state.alive_edges = HashSet::new();
     state.dead_edges = HashSet::new();
 
@@ -87,6 +114,7 @@ pub fn init_triangulation(state: &mut TriangulationState) {
 
 /// Выполнить шаг триангуляции.
 pub fn step_triangulation(state: &mut TriangulationState) {
+    state.circle = None;
     let mut current_edge;
     let mut right_point;
     // поиск живой вершины
@@ -100,7 +128,9 @@ pub fn step_triangulation(state: &mut TriangulationState) {
         state.alive_edges.remove(&current_edge);
 
         // ребро уже было рассмотрено
-        if state.dead_edges.contains(&current_edge) {
+        if state.dead_edges.contains(&current_edge)
+            || state.dead_edges.contains(&current_edge.reversed())
+        {
             continue;
         }
 
@@ -113,40 +143,51 @@ pub fn step_triangulation(state: &mut TriangulationState) {
     }
 
     let best_point = right_point.unwrap();
-    let new_triangle = Polygon::from_poses(vec![
+
+    let center = calculate_center(
         state.points[current_edge.0],
         state.points[current_edge.1],
         state.points[best_point],
-    ]);
-    state.triangles.push(new_triangle);
+    )
+    .unwrap();
+    let radius = (state.points[best_point] - center).length();
+    state.circle = Some((center, radius));
 
+    let new_triangle = Polygon::from_poses([current_edge.0, current_edge.1, best_point]);
+    if state.triangles.contains(&new_triangle) {
+        return;
+    }
+    state.triangles.insert(new_triangle);
+
+    let edge_begin = state.points[current_edge.0];
+    let edge_end = state.points[current_edge.1];
+    let b_point = state.points[best_point];
     // рассмотрение новых рёбер
     let edges_to_add = [
-        if is_point_left(
-            state.points[current_edge.1],
-            state.points[current_edge.0],
-            state.points[best_point],
-        ) {
+        if !is_point_left(edge_end, edge_begin, b_point) {
             Edge::new(current_edge.0, best_point)
         } else {
             Edge::new(best_point, current_edge.0)
         },
-        if is_point_left(
-            state.points[current_edge.0],
-            state.points[current_edge.1],
-            state.points[best_point],
-        ) {
+        if !is_point_left(edge_begin, edge_end, b_point) {
             Edge::new(current_edge.1, best_point)
         } else {
             Edge::new(best_point, current_edge.1)
         },
     ];
     for edge in edges_to_add {
-        if !state.dead_edges.contains(&edge) && !state.alive_edges.contains(&edge) {
+        if !state.dead_edges.contains(&edge)
+            && !state.dead_edges.contains(&edge.reversed())
+            && !state.alive_edges.contains(&edge)
+            && !state.alive_edges.contains(&edge.reversed())
+        {
             state.alive_edges.insert(edge);
         } else if state.alive_edges.contains(&edge) {
             state.alive_edges.remove(&edge);
             state.dead_edges.insert(edge);
+        } else if state.alive_edges.contains(&edge.reversed()) {
+            state.alive_edges.remove(&edge.reversed());
+            state.dead_edges.insert(edge.reversed());
         }
     }
     state.dead_edges.insert(current_edge);
@@ -185,7 +226,7 @@ fn find_initial_edge(points: &[Pos2]) -> Edge {
 fn angle_with_horizontal(p1: &Pos2, p2: &Pos2) -> f32 {
     let dx = p2.x - p1.x;
     let dy = p2.y - p1.y;
-    dy.atan2(dx)
+    dy.atan2(dx).abs()
 }
 
 /// Нахождение правой сопряжённой точки
@@ -203,7 +244,7 @@ fn find_right_conjugate_point(points: &[Pos2], edge: Edge) -> Option<usize> {
 
         let p3 = points[i];
         // точка должна быть справа от ребра
-        if !is_point_right(p1, p2, p3) {
+        if is_point_right(p3, p1, p2) {
             continue;
         }
 
