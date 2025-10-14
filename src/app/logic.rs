@@ -1,8 +1,8 @@
-use crate::app::{
-    AthenianApp,
-    polygon::{Polygon, PolygonStyle, transform2d::Transform2D},
-};
+use crate::app::{logic::polygon::{Polygon, PolygonStyle}, AthenianApp};
 use egui::{Color32, Painter, Pos2, Response, Ui};
+
+pub mod polygon;
+pub mod triangulation;
 
 // --------------------------------------------------
 // Обработка области рисования (холст)

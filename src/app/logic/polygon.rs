@@ -1,7 +1,4 @@
 use egui::Pos2;
-use transform2d::Transform2D;
-
-pub mod transform2d;
 
 // --------------------------------------------------
 // Реализация полигона
@@ -19,7 +16,7 @@ pub struct Polygon {
 // Конструкторы
 // --------------------------------------------------
 impl Polygon {
-    /// Создание полигона из одной точки
+    /// Создание полигона из одной точки.
     pub fn new(x: f32, y: f32) -> Self {
         Self {
             vertexes: vec![Pos2::new(x, y)],
@@ -27,9 +24,18 @@ impl Polygon {
         }
     }
 
-    /// Создание полигона из одной точки
+    /// Создание полигона из одной точки.
     pub fn from_pos(pos: Pos2) -> Self {
         Self::new(pos.x, pos.y)
+    }
+
+    /// Создание полигона из набора точек.
+    pub fn from_poses(poses: Vec<Pos2>) -> Self {
+        let mut tmp = Self::from_pos(*poses.first().unwrap());
+        for pos in poses.iter().skip(1) {
+            tmp.add_vertex_pos(*pos);
+        }
+        tmp
     }
 }
 
@@ -47,17 +53,6 @@ impl Polygon {
     /// Добавить вершину (точку) в полигон.
     pub fn add_vertex_pos(&mut self, pos: Pos2) {
         self.add_vertex(pos.x, pos.y);
-    }
-
-    /// Применить аффинное преобразование.
-    pub fn apply_transform(&mut self, transform: Transform2D) {
-        for vertex in &mut self.vertexes {
-            *vertex = transform.apply_to_pos(*vertex);
-        }
-
-        for intersection in &mut self.intersections {
-            *intersection = transform.apply_to_pos(*intersection);
-        }
     }
 }
 
@@ -278,66 +273,10 @@ impl Polygon {
         );
     }
 
-    fn draw_intersections(&self, painter: &egui::Painter, style: &PolygonStyle) {
-        self.intersections.iter().for_each(|intersection_pos| {
-            painter.circle_filled(
-                *intersection_pos,
-                style.intersection_radius,
-                style.intersection_color,
-            );
-        });
-    }
-
-    fn draw_arrows(&self, point: Pos2, painter: &egui::Painter, style: &PolygonStyle) {
-        for i in 0..self.vertexes.len() {
-            let a = self.vertexes[i];
-            let b = self.vertexes[(i + 1) % self.vertexes.len()];
-
-            let ab = b - a;
-            let arrow_vec: egui::Vec2;
-            if Self::is_point_left(point, a, b) {
-                arrow_vec = egui::Vec2 { x: -ab.y, y: ab.x }.normalized();
-            } else {
-                arrow_vec = egui::Vec2 { x: ab.y, y: -ab.x }.normalized();
-            }
-
-            let mid_pos = egui::Pos2 {
-                x: (a.x + b.x) / 2.0,
-                y: (a.y + b.y) / 2.0,
-            };
-            painter.arrow(
-                mid_pos,
-                20.0 * arrow_vec,
-                egui::epaint::Stroke::new(style.arrow_width, style.arrow_color),
-            );
-        }
-    }
-
-    fn draw_label(&self, painter: &egui::Painter) {
-        let string: String;
-        if self.is_convex() {
-            string = String::from("выпуклый");
-        } else {
-            string = String::from("невыпуклый");
-        }
-        painter.text(
-            self.get_center(),
-            egui::Align2::CENTER_CENTER,
-            string,
-            egui::FontId::proportional(18.0),
-            egui::Color32::BLACK,
-        );
-    }
-
     /// Нарисовать полигон на холсте.
     pub fn draw(&self, painter: &egui::Painter, style: &PolygonStyle, point: Option<Pos2>) {
         self.draw_vertexes(painter, style);
         self.draw_edges(painter, style);
-        self.draw_label(painter);
-        self.draw_intersections(painter, style);
-        if let Some(pos) = point {
-            self.draw_arrows(pos, painter, style);
-        }
     }
 }
 
