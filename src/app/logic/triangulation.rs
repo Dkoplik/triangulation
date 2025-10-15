@@ -169,12 +169,12 @@ pub fn step_triangulation(state: &mut TriangulationState) {
     let b_point = state.points[best_point];
     // рассмотрение новых рёбер
     let edges_to_add = [
-        if is_point_right(edge_end, edge_begin, b_point) {
+        if is_point_left(edge_end, edge_begin, b_point) {
             Edge::new(current_edge.0, best_point)
         } else {
             Edge::new(best_point, current_edge.0)
         },
-        if is_point_right(edge_begin, edge_end, b_point) {
+        if is_point_left(edge_begin, edge_end, b_point) {
             Edge::new(current_edge.1, best_point)
         } else {
             Edge::new(best_point, current_edge.1)
@@ -250,7 +250,7 @@ fn find_right_conjugate_point(points: &[Pos2], edge: Edge) -> Option<usize> {
 
         let p3 = points[i];
         // точка должна быть справа от ребра
-        if is_point_right(p3, p1, p2) {
+        if is_point_left(p3, p1, p2) {
             continue;
         }
 
@@ -260,7 +260,7 @@ fn find_right_conjugate_point(points: &[Pos2], edge: Edge) -> Option<usize> {
             let vec_to_center = center - mid_edge;
 
             let distance: f32;
-            if is_point_left(center, p1, p2) {
+            if is_point_right(center, p1, p2) {
                 distance = vec_to_center.length();
             }
             else {
@@ -298,7 +298,7 @@ fn is_point_right(point: Pos2, start: Pos2, end: Pos2) -> bool {
 
     // векторное произведение
     let cross_product = segment_vector.x * point_vector.y - segment_vector.y * point_vector.x;
-    cross_product < 0.0
+    cross_product > 0.0
 }
 
 fn is_point_left(point: Pos2, start: Pos2, end: Pos2) -> bool {
@@ -307,7 +307,7 @@ fn is_point_left(point: Pos2, start: Pos2, end: Pos2) -> bool {
 
     // векторное произведение
     let cross_product = segment_vector.x * point_vector.y - segment_vector.y * point_vector.x;
-    cross_product > 0.0
+    cross_product < 0.0
 }
 
 /// Проверка пересечения двух отрезков ab и cd
