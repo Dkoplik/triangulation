@@ -169,12 +169,12 @@ pub fn step_triangulation(state: &mut TriangulationState) {
     let b_point = state.points[best_point];
     // рассмотрение новых рёбер
     let edges_to_add = [
-        if !is_point_left(edge_end, edge_begin, b_point) {
+        if is_point_right(edge_end, edge_begin, b_point) {
             Edge::new(current_edge.0, best_point)
         } else {
             Edge::new(best_point, current_edge.0)
         },
-        if !is_point_left(edge_begin, edge_end, b_point) {
+        if is_point_right(edge_begin, edge_end, b_point) {
             Edge::new(current_edge.1, best_point)
         } else {
             Edge::new(best_point, current_edge.1)
@@ -260,7 +260,7 @@ fn find_right_conjugate_point(points: &[Pos2], edge: Edge) -> Option<usize> {
             let vec_to_center = center - mid_edge;
 
             let distance: f32;
-            if is_point_right(center, p1, p2) {
+            if is_point_left(center, p1, p2) {
                 distance = vec_to_center.length();
             }
             else {
