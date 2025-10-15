@@ -1,5 +1,5 @@
 use egui::Pos2;
-use std::{collections::HashSet, hash::Hash};
+use std::{collections::{HashSet, VecDeque}, hash::Hash};
 
 use crate::app::logic::polygon::{Polygon, PolygonStyle};
 
@@ -12,6 +12,8 @@ pub struct TriangulationState {
     pub triangles: HashSet<Polygon>,
     /// "Живые" рёбра.
     pub alive_edges: HashSet<Edge>,
+    /// Очередь обработки рёбер.
+    pub edges_queue: VecDeque<Edge>,
     /// "Мёртвые" рёбра.
     pub dead_edges: HashSet<Edge>,
     pub circle: Option<(Pos2, f32)>,
@@ -107,9 +109,12 @@ pub fn init_triangulation(state: &mut TriangulationState) {
 
     state.triangles = HashSet::new();
     state.alive_edges = HashSet::new();
+    state.edges_queue = VecDeque::new();
     state.dead_edges = HashSet::new();
 
-    state.alive_edges.insert(find_initial_edge(&state.points));
+    let initial_edge = find_initial_edge(&state.points);
+    state.alive_edges.insert(initial_edge);
+    state.edges_queue.push_back(initial_edge);
 }
 
 /// Выполнить шаг триангуляции.
@@ -120,11 +125,11 @@ pub fn step_triangulation(state: &mut TriangulationState) {
     // поиск живой вершины
     loop {
         // алгоритм завершён
-        if state.alive_edges.is_empty() {
+        if state.edges_queue.is_empty() {
             return;
         }
 
-        current_edge = *state.alive_edges.iter().next().unwrap();
+        current_edge = state.edges_queue.pop_front().unwrap();
         state.alive_edges.remove(&current_edge);
 
         // ребро уже было рассмотрено
@@ -182,6 +187,7 @@ pub fn step_triangulation(state: &mut TriangulationState) {
             && !state.alive_edges.contains(&edge.reversed())
         {
             state.alive_edges.insert(edge);
+            state.edges_queue.push_back(edge);
         } else if state.alive_edges.contains(&edge) {
             state.alive_edges.remove(&edge);
             state.dead_edges.insert(edge);
@@ -226,7 +232,7 @@ fn find_initial_edge(points: &[Pos2]) -> Edge {
 fn angle_with_horizontal(p1: &Pos2, p2: &Pos2) -> f32 {
     let dx = p2.x - p1.x;
     let dy = p2.y - p1.y;
-    dy.atan2(dx).abs()
+    dy.atan2(dx)
 }
 
 /// Нахождение правой сопряжённой точки
@@ -251,8 +257,15 @@ fn find_right_conjugate_point(points: &[Pos2], edge: Edge) -> Option<usize> {
         // расстояние до центра описанной
         if let Some(center) = calculate_center(p1, p2, p3) {
             let mid_edge = Pos2::new((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0);
-            let distance =
-                ((mid_edge.x - center.x).powi(2) + (mid_edge.y - center.y).powi(2)).sqrt();
+            let vec_to_center = center - mid_edge;
+
+            let distance: f32;
+            if is_point_right(center, p1, p2) {
+                distance = vec_to_center.length();
+            }
+            else {
+                distance = -vec_to_center.length()
+            }
 
             if distance < best_distance {
                 best_distance = distance;
